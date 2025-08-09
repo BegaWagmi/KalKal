@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RockPaperScissors - Convergence Trials</title>
+    <meta name="description" content="Strategic multiplayer maze game with Rock Paper Scissors battles">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #game-container {
+            position: relative;
+            border: 2px solid #00f5ff;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
+            background: #000;
+        }
+        
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: #00f5ff;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 6px;
+            background: rgba(0, 245, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00f5ff, #ff006e);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .ui-element {
+            pointer-events: auto;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen">
+            <div class="loading-text">Loading Convergence Trials...</div>
+            <div class="loading-bar">
+                <div class="loading-progress" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- UI Overlay for HTML elements -->
+        <div id="ui-overlay"></div>
+        
+        <!-- Game canvas will be inserted here by Phaser -->
+    </div>
+    
+    <!-- Game Entry Point -->
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
