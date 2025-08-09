@@ -21,12 +21,14 @@ A strategic multiplayer browser game combining maze navigation, resource managem
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ LTS
-- npm 9+
+- Node.js 18+ LTS (for TypeScript version)
+- npm 9+ (for TypeScript version)
 - Modern web browser with WebGL support
+- Local web server (for JavaScript version)
 
 ### Installation & Setup
 
+#### Option 1: TypeScript Version (Recommended)
 1. **Clone and Install Dependencies**
 ```bash
 cd client
@@ -42,7 +44,22 @@ npm run dev
 - Open browser to `http://localhost:3000`
 - Game runs in **MOCK MODE** by default (no server needed for testing)
 
-### Build for Production
+#### Option 2: JavaScript Version
+1. **Clone or download the project**
+2. **Serve the files using a local web server:**
+   ```bash
+   # Using Python 3
+   python -m http.server 8000
+   
+   # Using Node.js
+   npx http-server
+   
+   # Using PHP
+   php -S localhost:8000
+   ```
+3. **Open `http://localhost:8000` in your browser**
+
+### Build for Production (TypeScript Version)
 ```bash
 # Full production build with optimizations
 npm run optimize
@@ -80,11 +97,11 @@ npm run preview:prod # Preview production build
 ## 🏗️ Architecture
 
 ### Frontend Stack
-- **Engine**: Phaser.js 3.70+ (WebGL/Canvas 2D)
-- **Language**: TypeScript 5.0+
-- **Build**: Vite 4.0+
-- **State**: Redux Toolkit
-- **Network**: Socket.io-client
+- **Engine**: Phaser.js 3.70+ (WebGL/Canvas)
+- **Language**: TypeScript 5.0+ (client) / Vanilla JavaScript (root)
+- **Build**: Vite 4.0+ (client) / Direct HTML (root)
+- **State**: Redux Toolkit (client) / Global state (root)
+- **Network**: Socket.io-client (client) / Placeholder (root)
 
 ### Key Systems
 - **NetworkSystem**: WebSocket communication with client prediction
@@ -97,148 +114,70 @@ npm run preview:prod # Preview production build
 - **Client-Side Prediction**: Immediate input response
 - **Server Reconciliation**: Rollback and replay for consistency
 - **Spatial Partitioning**: Efficient proximity detection
-- **Asset Generation**: Procedural placeholder graphics
-- **Mock Multiplayer**: Standalone testing without server
+- **Procedural Maze Generation**: Random walls and obstacles
+- **Physics System**: Collision detection with walls and objects
+- **AI Players**: Simple AI opponents for testing
+- **Anti-Bot Design**: Hidden keys, changing door requirements
+- **Responsive UI**: Real-time game status and player info
 
-## 📁 Project Structure
+## 🎨 Game Design
 
-```
-/client/
-├── src/
-│   ├── core/           # Core game systems
-│   ├── scenes/         # Phaser scenes (Boot, Menu, Game, Battle)
-│   ├── entities/       # Game objects (Player)
-│   ├── systems/        # Game systems (Network)
-│   ├── utils/          # Constants, types, helpers
-│   └── assets/         # Generated at runtime
-├── public/             # Static assets
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
-```
+### Core Loop
+1. **Exploration**: Navigate maze, avoid obstacles
+2. **Collection**: Gather keys strategically
+3. **Progression**: Unlock doors with correct keys
+4. **Competition**: Battle opponents for keys
+5. **Victory**: Reach final door with all key types
 
-## 🎨 Visual Design
+### Balancing Features
+- **Key Limit**: Maximum 3 keys prevents hoarding
+- **Door Randomization**: Requirements change after opening
+- **Battle Consequences**: Risk vs. reward in encounters
+- **Proximity Timing**: 3-second delay prevents instant battles
 
-### Color Palette
-- **Primary**: Deep blues (#1a1a2e, #16213e)
-- **Accents**: Cyan (#00f5ff), Orange (#ff6b35), Pink (#ff006e)
-- **Symbols**: 
-  - Rock: Brown (#8b4513)
-  - Paper: White (#ffffff) 
-  - Scissors: Silver (#c0c0c0)
+### Anti-Cheat Measures
+- **Hidden Information**: Keys and door types are concealed
+- **Dynamic Requirements**: Door needs change randomly
+- **Reaction-Based Battles**: Quick decision-making required
+- **Proximity Detection**: Physical positioning matters
 
-### Art Style
-- Minimalist geometric shapes
-- Subtle neon glow effects
-- Smooth animations and transitions
-- Cyber-mystical theme
+## 🔮 Future Enhancements
 
-## 🔧 Development
+### Phase 5 Features
+- **Power-ups**: Speed boosts, key magnets, shield
+- **Special Doors**: Timed doors, teleporters, one-way passages
+- **Fog of War**: Limited visibility for strategic gameplay
+- **Timed Rounds**: Competitive time-based scoring
+- **Sound Effects**: Audio feedback for actions
+- **Particle Effects**: Visual polish for door openings
 
-### Available Scripts
-```bash
-# Development
-npm run dev          # Start development server
-npm run test         # Run tests
-npm run test:watch   # Run tests in watch mode
+### Multiplayer Expansion
+- **Real-time Networking**: WebSocket-based multiplayer
+- **Room System**: Join/create game rooms
+- **Player Lobbies**: Matchmaking and waiting areas
+- **Cross-Platform**: Mobile and desktop compatibility
 
-# Code Quality
-npm run type-check   # TypeScript type checking
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix linting issues
-npm run format       # Format code with Prettier
-npm run quality      # Run all quality checks
+## 🐛 Known Issues
 
-# Production
-npm run build        # Basic build
-npm run build:prod   # Optimized production build
-npm run preview      # Preview build
-npm run optimize     # Full optimization pipeline
-npm run clean        # Clean build artifacts
-```
+- AI players may get stuck on walls occasionally
+- Battle UI positioning may vary on different screen sizes
+- Some visual glitches during rapid key collection
 
-### Debug Features
-- **FPS Counter**: Shows performance metrics
-- **Network Logging**: Logs all network messages
-- **Mock Mode**: Simulates multiplayer without server
-- **Console Logging**: Detailed game event logging
+## 📝 License
 
-### Configuration
-Edit `/src/utils/Constants.ts` to modify:
-- Game balance (movement speed, battle timings)
-- Visual settings (colors, animations)
-- Debug options (FPS display, logging)
-- Network settings (server URL, tick rates)
-
-## 🌐 Multiplayer (Future)
-
-The game is designed for authoritative server architecture:
-- **Server**: Node.js + Express + Socket.io
-- **Database**: Redis (game state) + PostgreSQL (persistence)
-- **Security**: JWT authentication, input validation
-- **Scalability**: Docker containers with load balancing
-
-Current implementation includes mock multiplayer for standalone testing.
-
-## 🎯 Game Design Philosophy
-
-### Core Principles
-1. **Hidden Information**: Prevents automated solutions
-2. **Meaningful Choices**: Every decision has strategic weight
-3. **Skill + Luck Balance**: RPS provides uncertainty within strategy
-4. **Anti-Griefing**: Cooldowns and protections prevent harassment
-5. **Accessibility**: Simple controls, clear visual feedback
-
-### Balance Considerations
-- **Key Scarcity**: Limited inventory forces tough decisions
-- **Dynamic Doors**: Symbols change to prevent exploitation
-- **Battle Stakes**: Graduated penalties maintain engagement
-- **Time Pressure**: Optional match duration limits camping
-
-## 🚦 Current Status
-
-**PHASE 5 COMPLETE** - Production-ready game with:
-
-### ✅ **Core Gameplay**
-- Complete maze navigation with physics
-- Hidden Rock Paper Scissors key collection
-- Strategic door unlocking mechanics
-- Proximity-triggered RPS battles
-- Anti-bot design with dynamic elements
-
-### ✅ **Advanced Features**
-- **Power-Up System**: Ghost Walk, Key Sense, Shield, Speed Boost, Confusion
-- **Enhanced Animations**: Particle effects, screen shakes, celebrations
-- **Immersive Audio**: Spatial sound effects, dynamic music, UI feedback
-- **Performance Optimization**: Device-adaptive settings, object pooling, culling
-
-### ✅ **Technical Excellence**
-- Client-side prediction with server reconciliation
-- TypeScript with full type safety
-- Modular architecture with clean separation
-- Production build optimization
-- Code quality tools (ESLint, Prettier)
-- Performance monitoring and adaptive quality
-
-### ✅ **Polish & Production**
-- Beautiful cyber-mystical visual theme
-- Smooth 60 FPS gameplay with optimizations
-- Professional UI/UX with accessibility
-- Error handling and graceful degradation
-- Build system with chunking and minification
-
-## 📜 License
-
-This project is created as a game development prototype. See individual files for specific licensing.
+This project is open source and available under the MIT License.
 
 ## 🤝 Contributing
 
-This is a demonstration project. For educational purposes, feel free to:
-- Study the architecture
-- Modify game balance
-- Add new features
-- Optimize performance
+Contributions are welcome! Areas for improvement:
+- Enhanced AI behavior
+- Better maze generation algorithms
+- Improved visual assets
+- Sound and music integration
+- Multiplayer networking implementation
 
 ---
 
 **Built with ❤️ using Phaser.js, TypeScript, and modern web technologies**
+
+**Enjoy playing RockPaperScissors!** 🎮✂️📄🪨

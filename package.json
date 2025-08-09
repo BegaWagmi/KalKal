@@ -1,0 +1,25 @@
+{
+  "name": "rock-paper-scissors-maze-game",
+  "version": "1.0.0",
+  "description": "A 2D multiplayer browser game where players navigate a maze, collect keys, and battle with Rock-Paper-Scissors mechanics",
+  "main": "js/main.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "test": "echo 'Open http://localhost:8000 in your browser to test the game'",
+    "build": "echo 'Game is ready to deploy - push to GitHub to deploy to Pages'"
+  },
+  "keywords": [
+    "game",
+    "phaser",
+    "multiplayer",
+    "maze",
+    "rock-paper-scissors",
+    "browser-game"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}
