@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { SCENE_KEYS, COLORS, DEBUG_CONFIG } from '../utils/Constants.ts';
 import { NetworkSystem } from '../systems/NetworkSystem.ts';
+import { AudioSystem } from '../systems/AudioSystem.ts';
 
 export class MenuScene extends Phaser.Scene {
   private networkSystem!: NetworkSystem;
+  private audioSystem!: AudioSystem;
   private menuState: 'main' | 'connecting' | 'matchmaking' | 'settings' = 'main';
   private currentMenu: Phaser.GameObjects.Container | null = null;
-  private backgroundMusic: Phaser.Sound.BaseSound | null = null;
   private playerName: string = 'Player';
 
   constructor() {
@@ -18,6 +19,9 @@ export class MenuScene extends Phaser.Scene {
     
     // Setup background
     this.createBackground();
+    
+    // Initialize audio system
+    this.audioSystem = new AudioSystem(this);
     
     // Initialize network system
     this.setupNetworkSystem();
@@ -191,6 +195,7 @@ export class MenuScene extends Phaser.Scene {
     container.on('pointerover', () => {
       bg.setFillStyle(COLORS.ACCENT_CYAN, 0.2);
       label.setColor('#00f5ff');
+      this.audioSystem.playUIHover();
       this.tweens.add({
         targets: container,
         scaleX: 1.05,
@@ -211,6 +216,7 @@ export class MenuScene extends Phaser.Scene {
     });
     
     container.on('pointerdown', () => {
+      this.audioSystem.playUIClick();
       this.tweens.add({
         targets: container,
         scaleX: 0.95,
@@ -488,14 +494,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startBackgroundMusic(): void {
-    // Would start menu music here if audio assets were loaded
-    // this.backgroundMusic = this.sound.add('bgm_menu', { volume: 0.3, loop: true });
-    // this.backgroundMusic.play();
+    // Start menu music with fade in
+    this.audioSystem.playMusic('bgm_menu', { fadeIn: 1500 });
   }
 
   destroy(): void {
-    if (this.backgroundMusic) {
-      this.backgroundMusic.stop();
+    if (this.audioSystem) {
+      this.audioSystem.destroy();
     }
     
     if (this.networkSystem) {

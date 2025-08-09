@@ -1,9 +1,17 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG, SCENE_KEYS } from './utils/Constants.ts';
+import { PerformanceUtils } from './utils/Performance.ts';
 import { BootScene } from './scenes/BootScene.ts';
 import { MenuScene } from './scenes/MenuScene.ts';
 import { GameScene } from './scenes/GameScene.ts';
 import { BattleScene } from './scenes/BattleScene.ts';
+
+// Get adaptive settings based on device performance
+const devicePerformance = PerformanceUtils.getDevicePerformanceClass();
+const adaptiveSettings = PerformanceUtils.getAdaptiveSettings();
+
+console.log(`🔧 Device performance class: ${devicePerformance}`);
+console.log('⚙️ Adaptive settings applied:', adaptiveSettings);
 
 // Game Configuration
 const gameConfig: Phaser.Types.Core.GameConfig = {

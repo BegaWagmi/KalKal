@@ -13,6 +13,7 @@ import {
   KeyInventory, 
   InputState 
 } from '../utils/Types.ts';
+import { PowerUpType, PowerUpConfig, POWER_UP_CONFIGS } from './PowerUp.ts';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   // Player data
@@ -45,6 +46,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private isInBattle: boolean = false;
   private battleCooldownUntil: number = 0;
   private spawnProtectionUntil: number = 0;
+  
+  // Power-up system
+  private activePowerUps: Map<PowerUpType, { config: PowerUpConfig; expiresAt: number; effect: any }> = new Map();
+  private powerUpIndicators: Phaser.GameObjects.Container;
 
   constructor(scene: Phaser.Scene, x: number, y: number, playerData: PlayerData, isLocal: boolean = false) {
     super(scene, x, y, 'player');
@@ -111,6 +116,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Proximity indicator for battles
     this.proximityIndicator = this.scene.add.graphics();
     this.proximityIndicator.setVisible(false);
+    
+    // Power-up indicators
+    this.powerUpIndicators = this.scene.add.container(this.x, this.y - 40);
+    this.updatePowerUpIndicators();
   }
 
   private setupAnimations(): void {
@@ -440,12 +449,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Update UI element positions
     this.nameText.setPosition(this.x, this.y - 25);
     this.keyIndicators.setPosition(this.x, this.y + 25);
+    this.powerUpIndicators.setPosition(this.x, this.y - 40);
     this.updateStatusIndicator();
     
     // Update proximity indicator position
     if (this.proximityIndicator.visible) {
       this.proximityIndicator.setPosition(this.x, this.y);
     }
+    
+    // Update power-ups (check for expiration)
+    this.updatePowerUps();
   }
 
   // Cleanup
@@ -453,12 +466,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Clean up UI elements
     this.nameText?.destroy();
     this.keyIndicators?.destroy();
+    this.powerUpIndicators?.destroy();
     this.statusIndicator?.destroy();
     this.proximityIndicator?.destroy();
     
     // Kill any active tweens
     this.scene.tweens.killTweensOf(this);
     this.scene.tweens.killTweensOf(this.keyIndicators);
+    this.scene.tweens.killTweensOf(this.powerUpIndicators);
     this.scene.tweens.killTweensOf(this.proximityIndicator);
     
     super.destroy();
@@ -479,5 +494,198 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public getKeys(): KeyType[] {
     return this.playerData.keys.items.map(key => key.type);
+  }
+
+  // Power-Up System
+  public addPowerUp(powerUpType: PowerUpType): void {
+    const config = POWER_UP_CONFIGS[powerUpType];
+    const expiresAt = config.duration > 0 ? Date.now() + config.duration : 0;
+    
+    this.activePowerUps.set(powerUpType, {
+      config,
+      expiresAt,
+      effect: { ...config.effect }
+    });
+    
+    this.updatePowerUpIndicators();
+    this.applyPowerUpEffect(powerUpType);
+    
+    console.log(`⚡ ${this.playerName} gained ${powerUpType} power-up`);
+  }
+
+  public removePowerUp(powerUpType: PowerUpType): void {
+    if (this.activePowerUps.has(powerUpType)) {
+      this.activePowerUps.delete(powerUpType);
+      this.updatePowerUpIndicators();
+      this.removePowerUpEffect(powerUpType);
+      
+      console.log(`⚡ ${this.playerName} lost ${powerUpType} power-up`);
+    }
+  }
+
+  public hasPowerUp(powerUpType: PowerUpType): boolean {
+    return this.activePowerUps.has(powerUpType);
+  }
+
+  public usePowerUp(powerUpType: PowerUpType): boolean {
+    const powerUp = this.activePowerUps.get(powerUpType);
+    if (!powerUp) return false;
+
+    switch (powerUpType) {
+      case PowerUpType.GHOST_WALK:
+        if (powerUp.effect.usesRemaining > 0) {
+          powerUp.effect.usesRemaining--;
+          if (powerUp.effect.usesRemaining <= 0) {
+            this.removePowerUp(powerUpType);
+          }
+          return true;
+        }
+        break;
+      
+      case PowerUpType.SHIELD:
+        if (powerUp.effect.usesRemaining > 0) {
+          powerUp.effect.usesRemaining--;
+          if (powerUp.effect.usesRemaining <= 0) {
+            this.removePowerUp(powerUpType);
+          }
+          return true;
+        }
+        break;
+      
+      case PowerUpType.CONFUSION:
+        // Instant use power-up
+        this.removePowerUp(powerUpType);
+        return true;
+    }
+
+    return false;
+  }
+
+  private applyPowerUpEffect(powerUpType: PowerUpType): void {
+    switch (powerUpType) {
+      case PowerUpType.SPEED_BOOST:
+        const powerUp = this.activePowerUps.get(powerUpType);
+        if (powerUp) {
+          this.movementSpeed = GAMEPLAY_CONFIG.MOVEMENT_SPEED * powerUp.effect.speedMultiplier;
+          
+          // Visual effect for speed boost
+          this.setTint(0x00ff87); // Green tint
+          this.scene.tweens.add({
+            targets: this,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 200,
+            yoyo: true,
+            repeat: 3
+          });
+        }
+        break;
+      
+      case PowerUpType.KEY_SENSE:
+        // Visual effect for key sense
+        this.setTint(0xff6b35); // Orange tint
+        break;
+      
+      case PowerUpType.SHIELD:
+        // Visual effect for shield
+        this.statusIndicator.lineStyle(3, COLORS.ACCENT_PINK, 1.0);
+        this.statusIndicator.strokeCircle(this.x, this.y, VISUAL_CONFIG.PLAYER_SIZE + 12);
+        break;
+    }
+  }
+
+  private removePowerUpEffect(powerUpType: PowerUpType): void {
+    switch (powerUpType) {
+      case PowerUpType.SPEED_BOOST:
+        this.movementSpeed = GAMEPLAY_CONFIG.MOVEMENT_SPEED;
+        this.setTint(this.playerData.color); // Reset tint
+        break;
+      
+      case PowerUpType.KEY_SENSE:
+        this.setTint(this.playerData.color); // Reset tint
+        break;
+    }
+  }
+
+  private updatePowerUpIndicators(): void {
+    this.powerUpIndicators.removeAll(true);
+    
+    const powerUps = Array.from(this.activePowerUps.entries());
+    const startX = -(powerUps.length * 12) / 2;
+    
+    powerUps.forEach(([type, data], index) => {
+      const icon = this.scene.add.text(
+        startX + index * 12, 
+        0, 
+        data.config.icon, 
+        {
+          fontSize: '10px',
+          fontFamily: 'Arial, sans-serif'
+        }
+      ).setOrigin(0.5);
+      
+      // Add background circle
+      const bg = this.scene.add.circle(
+        startX + index * 12, 
+        0, 
+        8, 
+        data.config.color, 
+        0.8
+      );
+      
+      this.powerUpIndicators.add([bg, icon]);
+    });
+    
+    // Update container position
+    this.powerUpIndicators.setPosition(this.x, this.y - 40);
+  }
+
+  private updatePowerUps(): void {
+    const currentTime = Date.now();
+    const expiredPowerUps: PowerUpType[] = [];
+    
+    this.activePowerUps.forEach((data, type) => {
+      if (data.expiresAt > 0 && currentTime >= data.expiresAt) {
+        expiredPowerUps.push(type);
+      }
+    });
+    
+    expiredPowerUps.forEach(type => {
+      this.removePowerUp(type);
+    });
+  }
+
+  // Enhanced door interaction with Ghost Walk
+  public canPassThroughDoor(doorType: KeyType): boolean {
+    // Check if player has the required key
+    if (this.hasKey(doorType)) {
+      return true;
+    }
+    
+    // Check if player has Ghost Walk power-up
+    if (this.hasPowerUp(PowerUpType.GHOST_WALK)) {
+      return this.usePowerUp(PowerUpType.GHOST_WALK);
+    }
+    
+    return false;
+  }
+
+  // Enhanced battle protection with Shield
+  public hasShieldProtection(): boolean {
+    return this.hasPowerUp(PowerUpType.SHIELD);
+  }
+
+  public useShieldProtection(): boolean {
+    return this.usePowerUp(PowerUpType.SHIELD);
+  }
+
+  // Get movement speed (affected by power-ups)
+  public getMovementSpeed(): number {
+    return this.movementSpeed;
+  }
+
+  // Get all active power-ups
+  public getActivePowerUps(): PowerUpType[] {
+    return Array.from(this.activePowerUps.keys());
   }
 }

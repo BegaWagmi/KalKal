@@ -16,11 +16,16 @@ import {
   GameState 
 } from '../utils/Types.ts';
 import { NetworkSystem } from '../systems/NetworkSystem.ts';
+import { ParticleSystem } from '../systems/ParticleSystem.ts';
+import { AudioSystem } from '../systems/AudioSystem.ts';
 import { Player } from '../entities/Player.ts';
+import { PowerUp, PowerUpManager, PowerUpType } from '../entities/PowerUp.ts';
 
 export class GameScene extends Phaser.Scene {
   // Core systems
   private networkSystem!: NetworkSystem;
+  private particleSystem!: ParticleSystem;
+  private audioSystem!: AudioSystem;
   private players: Map<string, Player> = new Map();
   private localPlayer!: Player;
   private maze!: MazeData;
@@ -29,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private mazeLayer!: Phaser.Tilemaps.TilemapLayer;
   private keysGroup!: Phaser.Physics.Arcade.Group;
   private doorsGroup!: Phaser.Physics.Arcade.Group;
+  private powerUpManager!: PowerUpManager;
   
   // Input and movement
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -90,6 +96,15 @@ export class GameScene extends Phaser.Scene {
     
     // Setup network events
     this.setupNetworkEvents();
+    
+    // Initialize particle system
+    this.particleSystem = new ParticleSystem(this);
+    
+    // Initialize audio system
+    this.audioSystem = new AudioSystem(this);
+    
+    // Initialize power-up system
+    this.setupPowerUps();
     
     // Start game
     this.startGame();
@@ -303,6 +318,10 @@ export class GameScene extends Phaser.Scene {
     this.networkSystem.on('gameEnded', this.handleGameEnded, this);
   }
 
+  private setupPowerUps(): void {
+    this.powerUpManager = new PowerUpManager(this);
+  }
+
   private startGame(): void {
     this.gameStarted = true;
     
@@ -311,6 +330,15 @@ export class GameScene extends Phaser.Scene {
     
     // Start network updates
     this.startNetworkUpdates();
+    
+    // Start power-up spawning
+    this.powerUpManager.startSpawning();
+    
+    // Start ambient effects
+    this.particleSystem.createAmbientParticles();
+    
+    // Start game music
+    this.audioSystem.playMusic('bgm_game', { fadeIn: 2000 });
     
     console.log('🚀 Game started!');
   }
@@ -326,11 +354,24 @@ export class GameScene extends Phaser.Scene {
     
     // Player vs doors
     this.physics.add.overlap(this.localPlayer, this.doorsGroup, this.interactWithDoor, undefined, this);
+    
+    // Player vs power-ups
+    this.setupPowerUpCollisions();
   }
 
   private collectKey(player: Player, keySprite: Phaser.Physics.Arcade.Sprite): void {
     const keyType = keySprite.getData('keyType') as KeyType;
     const keyId = keySprite.getData('keyId') as string;
+    
+    // Create sparkle effect
+    const keyColor = this.getKeyColor(keyType);
+    this.particleSystem.createKeySparkle({ x: keySprite.x, y: keySprite.y }, keyColor);
+    
+    // Play collection sound
+    this.audioSystem.playKeyCollected(keyType, 
+      { x: keySprite.x, y: keySprite.y }, 
+      { x: this.localPlayer.x, y: this.localPlayer.y }
+    );
     
     // Add key to player
     player.addKey(keyType);
@@ -350,36 +391,73 @@ export class GameScene extends Phaser.Scene {
     
     if (isOpen) return; // Already open
     
-    if (player.hasKey(doorType)) {
+    // Check if player can pass through door (with keys or Ghost Walk power-up)
+    if (player.canPassThroughDoor(doorType)) {
+      // Remove key if used (Ghost Walk doesn't consume keys)
+      if (player.hasKey(doorType)) {
+        player.removeKey(doorType);
+      }
+      
       // Open door
-      player.removeKey(doorType);
       doorSprite.setData('isOpen', true);
       doorSprite.setAlpha(0.5);
       doorSprite.body!.setEnable(false); // Disable collision
       
-      // Visual effect
-      this.createDoorOpenEffect(doorSprite.x, doorSprite.y);
+      // Enhanced visual effect
+      const doorColor = this.getKeyColor(doorType);
+      this.particleSystem.createDoorBurst({ x: doorSprite.x, y: doorSprite.y }, doorColor);
+      
+      // Play door opening sound
+      this.audioSystem.playDoorOpened(doorType,
+        { x: doorSprite.x, y: doorSprite.y },
+        { x: this.localPlayer.x, y: this.localPlayer.y }
+      );
       
       console.log(`🚪 Opened ${doorType} door`);
     } else {
+      // Play door locked sound
+      this.audioSystem.playDoorLocked(
+        { x: doorSprite.x, y: doorSprite.y },
+        { x: this.localPlayer.x, y: this.localPlayer.y }
+      );
+      
       console.log(`🔒 Need ${doorType} key to open door`);
     }
   }
 
-  private createDoorOpenEffect(x: number, y: number): void {
-    const particles = this.add.particles(x, y, 'particles', {
-      scale: { start: 0.2, end: 0 },
-      speed: { min: 50, max: 100 },
-      lifespan: 500,
-      quantity: 10,
-      tint: COLORS.ACCENT_CYAN
-    });
+  private setupPowerUpCollisions(): void {
+    if (!this.localPlayer) return;
     
-    // Remove particles after animation
-    this.time.delayedCall(1000, () => {
-      particles.destroy();
+    // Check collisions with power-ups every frame
+    this.physics.world.on('worldstep', () => {
+      this.powerUpManager.getPowerUps().forEach(powerUp => {
+        if (this.physics.overlap(this.localPlayer, powerUp)) {
+          this.collectPowerUp(this.localPlayer, powerUp);
+        }
+      });
     });
   }
+
+  private collectPowerUp(player: Player, powerUp: PowerUp): void {
+    // Create enhanced collection effect
+    this.particleSystem.createPowerUpCollection(
+      { x: powerUp.x, y: powerUp.y }, 
+      powerUp.config.color
+    );
+    
+    // Add power-up to player
+    player.addPowerUp(powerUp.powerUpType);
+    
+    // Remove power-up from manager
+    this.powerUpManager.removePowerUp(powerUp);
+    
+    // Play collection animation
+    powerUp.collect();
+    
+    console.log(`✨ Collected ${powerUp.powerUpType} power-up`);
+  }
+
+
 
   private startNetworkUpdates(): void {
     // Send input updates at regular intervals
@@ -413,6 +491,14 @@ export class GameScene extends Phaser.Scene {
   private handleBattleStarted(data: any): void {
     console.log('⚔️ Battle started!', data);
     
+    // Create battle clash effect at battle position
+    if (data.battleData && data.battleData.position) {
+      this.particleSystem.createBattleClash(data.battleData.position);
+    }
+    
+    // Play battle start sound
+    this.audioSystem.playBattleStart();
+    
     // Pause current scene and start battle scene
     this.scene.pause();
     this.scene.launch(SCENE_KEYS.BATTLE, {
@@ -424,6 +510,15 @@ export class GameScene extends Phaser.Scene {
   private handlePlayerEliminated(data: any): void {
     const player = this.players.get(data.playerId);
     if (player) {
+      // Create elimination effect
+      this.particleSystem.createEliminationEffect(
+        { x: player.x, y: player.y },
+        player.playerData.color
+      );
+      
+      // Play elimination sound
+      this.audioSystem.playPlayerEliminated();
+      
       player.playerData.status = 'eliminated';
       console.log(`💀 Player eliminated: ${player.playerName}`);
     }
@@ -432,6 +527,15 @@ export class GameScene extends Phaser.Scene {
   private handleGameEnded(data: any): void {
     console.log('🏁 Game ended!', data);
     this.gameStarted = false;
+    
+    // Create victory celebration if local player won
+    const localPlayerId = this.networkSystem.getPlayerId();
+    if (data.winner === localPlayerId && this.localPlayer) {
+      this.particleSystem.createVictoryCelebration({ x: this.localPlayer.x, y: this.localPlayer.y });
+      this.audioSystem.playBattleWin();
+    } else {
+      this.audioSystem.playBattleLose();
+    }
     
     // Show end game screen
     this.showEndGameScreen(data);
@@ -539,6 +643,12 @@ export class GameScene extends Phaser.Scene {
       player.update(time, delta);
     });
     
+    // Update power-ups
+    this.powerUpManager.update();
+    
+    // Update particle system
+    this.particleSystem.update();
+    
     // Update HUD
     this.updateHUD();
     
@@ -624,6 +734,21 @@ export class GameScene extends Phaser.Scene {
       player.destroy();
     });
     this.players.clear();
+    
+    // Clean up power-ups
+    if (this.powerUpManager) {
+      this.powerUpManager.destroy();
+    }
+    
+    // Clean up particle system
+    if (this.particleSystem) {
+      this.particleSystem.destroy();
+    }
+    
+    // Clean up audio system
+    if (this.audioSystem) {
+      this.audioSystem.destroy();
+    }
   }
 
   destroy(): void {

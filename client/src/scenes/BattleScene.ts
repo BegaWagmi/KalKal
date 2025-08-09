@@ -2,9 +2,13 @@ import Phaser from 'phaser';
 import { SCENE_KEYS, COLORS, KeyType, GAMEPLAY_CONFIG } from '../utils/Constants.ts';
 import { BattleData, BattleResult } from '../utils/Types.ts';
 import { NetworkSystem } from '../systems/NetworkSystem.ts';
+import { ParticleSystem } from '../systems/ParticleSystem.ts';
+import { AudioSystem } from '../systems/AudioSystem.ts';
 
 export class BattleScene extends Phaser.Scene {
   private networkSystem!: NetworkSystem;
+  private particleSystem!: ParticleSystem;
+  private audioSystem!: AudioSystem;
   private battleData!: BattleData;
   private opponentName: string = '';
   private selectedChoice: KeyType | null = null;
@@ -41,6 +45,12 @@ export class BattleScene extends Phaser.Scene {
   create(): void {
     // Get network system
     this.networkSystem = this.registry.get('networkManager');
+    
+    // Initialize particle system
+    this.particleSystem = new ParticleSystem(this);
+    
+    // Initialize audio system
+    this.audioSystem = new AudioSystem(this);
     
     // Setup battle UI
     this.createBattleUI();
@@ -118,7 +128,7 @@ export class BattleScene extends Phaser.Scene {
       this.resultContainer
     ]);
     
-    // Entrance animation
+    // Entrance animation with particle effects
     this.battleContainer.setScale(0);
     this.tweens.add({
       targets: this.battleContainer,
@@ -127,6 +137,10 @@ export class BattleScene extends Phaser.Scene {
       duration: 500,
       ease: 'Back.easeOut'
     });
+    
+    // Create dramatic entrance effect
+    const { width, height } = this.cameras.main;
+    this.particleSystem.createBattleClash({ x: width / 2, y: height / 2 });
   }
 
   private createChoiceButtons(): void {
@@ -214,6 +228,10 @@ export class BattleScene extends Phaser.Scene {
     this.selectedChoice = choice;
     console.log('⚔️ Selected:', choice);
     
+    // Create selection effect
+    const { width, height } = this.cameras.main;
+    this.particleSystem.createKeySparkle({ x: width / 2, y: height / 2 + 50 }, this.getChoiceColor(choice));
+    
     // Send choice to server
     this.networkSystem.sendBattleChoice(this.battleData.id, choice);
     
@@ -256,6 +274,11 @@ export class BattleScene extends Phaser.Scene {
         // Auto-select if time runs out
         if (this.timeRemaining <= 0 && !this.selectedChoice) {
           this.selectChoice(KeyType.ROCK); // Default to rock
+        }
+        
+        // Play countdown sound at 3, 2, 1
+        if (this.timeRemaining === 3000 || this.timeRemaining === 2000 || this.timeRemaining === 1000) {
+          this.audioSystem.playBattleCountdown();
         }
       },
       repeat: Math.ceil(this.timeRemaining / 100)
@@ -339,6 +362,16 @@ export class BattleScene extends Phaser.Scene {
       duration: 500
     });
     
+    // Create result effect
+    const { width, height } = this.cameras.main;
+    if (won) {
+      this.particleSystem.createVictoryCelebration({ x: width / 2, y: height / 2 });
+      this.audioSystem.playBattleWin();
+    } else {
+      this.particleSystem.createEliminationEffect({ x: width / 2, y: height / 2 }, COLORS.ACCENT_PINK);
+      this.audioSystem.playBattleLose();
+    }
+    
     // Auto-continue after 5 seconds
     this.time.delayedCall(5000, () => {
       this.exitBattle();
@@ -410,9 +443,28 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  private getChoiceColor(choice: KeyType): number {
+    switch (choice) {
+      case KeyType.ROCK: return COLORS.ROCK_COLOR;
+      case KeyType.PAPER: return COLORS.PAPER_COLOR;
+      case KeyType.SCISSORS: return COLORS.SCISSORS_COLOR;
+      default: return COLORS.WHITE;
+    }
+  }
+
   destroy(): void {
     // Remove network listeners
     this.networkSystem.off('battleResult', this.handleBattleResult, this);
+    
+    // Clean up particle system
+    if (this.particleSystem) {
+      this.particleSystem.destroy();
+    }
+    
+    // Clean up audio system
+    if (this.audioSystem) {
+      this.audioSystem.destroy();
+    }
     
     super.destroy();
   }
