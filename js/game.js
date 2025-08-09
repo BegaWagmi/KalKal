@@ -43,36 +43,80 @@ let gameState = {
     gameStarted: false
 };
 
+// Logging utility function
+function log(component, action, details = '', data = null) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] [${component}] ${action}${details ? ': ' + details : ''}`;
+    
+    if (data) {
+        console.log(logMessage, data);
+    } else {
+        console.log(logMessage);
+    }
+}
+
 // Utility functions
 function getRandomKeyType() {
-    return GAME_CONSTANTS.KEY_TYPES[Math.floor(Math.random() * GAME_CONSTANTS.KEY_TYPES.length)];
+    const keyType = GAME_CONSTANTS.KEY_TYPES[Math.floor(Math.random() * GAME_CONSTANTS.KEY_TYPES.length)];
+    log('UTILITY', 'getRandomKeyType', `Generated: ${keyType}`);
+    return keyType;
 }
 
 function canBeatDoor(playerKey, doorType) {
-    return GAME_CONSTANTS.WINNING_COMBINATIONS[playerKey] === doorType;
+    const canBeat = GAME_CONSTANTS.WINNING_COMBINATIONS[playerKey] === doorType;
+    log('UTILITY', 'canBeatDoor', `${playerKey} vs ${doorType} = ${canBeat ? 'WIN' : 'LOSE'}`);
+    return canBeat;
 }
 
 function getDistance(pos1, pos2) {
     const dx = pos1.x - pos2.x;
     const dy = pos1.y - pos2.y;
-    return Math.sqrt(dx * dx + dy * dy);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    log('UTILITY', 'getDistance', `Distance: ${distance.toFixed(2)} between (${pos1.x.toFixed(1)}, ${pos1.y.toFixed(1)}) and (${pos2.x.toFixed(1)}, ${pos2.y.toFixed(1)})`);
+    return distance;
 }
 
 function updateUI() {
-    const playerInfo = document.getElementById('player-info');
-    const gameStatus = document.getElementById('game-status');
+    log('UI', 'updateUI', 'Starting UI update');
     
-    if (gameState.currentPlayer) {
-        const keys = gameState.currentPlayer.keys.length;
-        const pos = gameState.currentPlayer.getPosition();
-        playerInfo.textContent = `Keys: ${keys} | Position: (${Math.floor(pos.x)}, ${Math.floor(pos.y)})`;
-    }
-    
-    if (gameState.battleInProgress) {
-        gameStatus.textContent = 'Game Status: Battle in progress!';
-    } else if (gameState.gameStarted) {
-        gameStatus.textContent = 'Game Status: Playing';
-    } else {
-        gameStatus.textContent = 'Game Status: Waiting for players...';
+    try {
+        const playerInfo = document.getElementById('player-info');
+        const gameStatus = document.getElementById('game-status');
+        
+        if (!playerInfo || !gameStatus) {
+            log('UI', 'updateUI', 'ERROR: UI elements not found', { playerInfo: !!playerInfo, gameStatus: !!gameStatus });
+            return;
+        }
+        
+        if (gameState.currentPlayer) {
+            const keys = gameState.currentPlayer.keys.length;
+            const pos = gameState.currentPlayer.getPosition();
+            const newText = `Keys: ${keys} | Position: (${Math.floor(pos.x)}, ${Math.floor(pos.y)})`;
+            playerInfo.textContent = newText;
+            log('UI', 'updateUI', 'Updated player info', { keys, position: pos });
+        } else {
+            log('UI', 'updateUI', 'No current player to update');
+        }
+        
+        let statusText = '';
+        if (gameState.battleInProgress) {
+            statusText = 'Game Status: Battle in progress!';
+        } else if (gameState.gameStarted) {
+            statusText = 'Game Status: Playing';
+        } else {
+            statusText = 'Game Status: Waiting for players...';
+        }
+        
+        gameStatus.textContent = statusText;
+        log('UI', 'updateUI', 'Updated game status', { status: statusText });
+        
+    } catch (error) {
+        log('UI', 'updateUI', 'ERROR: Failed to update UI', error);
     }
 }
+
+// Log initial game state
+log('GAME', 'Initialization', 'Game constants and state initialized', {
+    constants: GAME_CONSTANTS,
+    initialState: gameState
+});

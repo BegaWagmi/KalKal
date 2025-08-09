@@ -1,57 +1,150 @@
-// Global function for battle UI
+// Global function for battle UI choices
 function chooseMove(move) {
-    if (gameState.battleInProgress && gameState.currentPlayer) {
-        // Find the current scene's battle system
-        const currentScene = game.scene.getScene('MainScene');
-        if (currentScene && currentScene.battleSystem) {
-            currentScene.battleSystem.chooseMove(move);
+    try {
+        log('MAIN', 'ChooseMove', `Player chose move: ${move}`, { move });
+        
+        if (gameState.battleSystem && gameState.battleSystem.isActive) {
+            gameState.battleSystem.chooseMove(move);
+            log('MAIN', 'ChooseMove', `Move ${move} processed by battle system`);
+        } else {
+            log('MAIN', 'ChooseMove', 'No active battle system to process move', { move });
         }
+        
+    } catch (error) {
+        log('MAIN', 'ChooseMove', `ERROR: Failed to process move ${move}`, error);
     }
 }
 
-// Initialize the game when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    try {
-        // Create the Phaser game instance
-        const game = new Phaser.Game(GAME_CONFIG);
-        
-        // Make game globally accessible
-        window.game = game;
-        
-        console.log('RockPaperScissors game initialized successfully!');
-        
-        // Add some helpful console commands for debugging
-        window.gameDebug = {
-            showKeys: () => {
-                if (gameState.currentPlayer) {
-                    console.log('Current player keys:', gameState.currentPlayer.keys);
-                }
-            },
-            showDoors: () => {
-                console.log('Active doors:', Array.from(gameState.doors.values()));
-            },
-            showKeys: () => {
-                console.log('Available keys:', Array.from(gameState.keys.values()));
-            },
-            addKey: (type) => {
-                if (gameState.currentPlayer && ['rock', 'paper', 'scissors'].includes(type)) {
-                    gameState.currentPlayer.addKey(type);
-                    console.log(`Added ${type} key to player`);
-                }
+// Initialize the game
+try {
+    log('MAIN', 'GameInit', 'Starting game initialization');
+    
+    // Create game configuration
+    const config = {
+        type: Phaser.AUTO,
+        width: GAME_CONFIG.WIDTH,
+        height: GAME_CONFIG.HEIGHT,
+        parent: 'game-container',
+        backgroundColor: GAME_CONFIG.BACKGROUND_COLOR,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 0 },
+                debug: false
             }
-        };
+        },
+        scene: MainScene
+    };
+    
+    log('MAIN', 'GameInit', 'Game configuration created', { 
+        width: config.width, 
+        height: config.height,
+        physicsType: config.physics.default
+    });
+    
+    // Create game instance
+    const game = new Phaser.Game(config);
+    
+    // Make game globally accessible
+    window.game = game;
+    
+    log('MAIN', 'GameInit', 'Phaser game instance created and made global', { 
+        gameInstance: !!game,
+        sceneCount: game.scene.scenes.length
+    });
+    
+    // Set up global debug commands
+    window.gameDebug = {
+        showKeys: () => {
+            try {
+                log('MAIN', 'DebugShowKeys', 'Debug command: showKeys executed');
+                const player = gameState.players.get('player1');
+                if (player) {
+                    console.log('Player keys:', player.keys);
+                    log('MAIN', 'DebugShowKeys', 'Player keys displayed', { keys: player.keys });
+                } else {
+                    log('MAIN', 'DebugShowKeys', 'No player found to show keys for');
+                }
+            } catch (error) {
+                log('MAIN', 'DebugShowKeys', 'ERROR: Failed to execute showKeys debug command', error);
+            }
+        },
         
-        console.log('Debug commands available: gameDebug.showKeys(), gameDebug.showDoors(), gameDebug.addKey(type)');
+        addKey: (type) => {
+            try {
+                log('MAIN', 'DebugAddKey', `Debug command: addKey executed with type ${type}`, { type });
+                const player = gameState.players.get('player1');
+                if (player && ['rock', 'paper', 'scissors'].includes(type)) {
+                    player.addKey(type);
+                    log('MAIN', 'DebugAddKey', `Key ${type} added to player via debug command`);
+                } else {
+                    log('MAIN', 'DebugAddKey', 'Invalid key type or no player found', { type, playerExists: !!player });
+                }
+            } catch (error) {
+                log('MAIN', 'DebugAddKey', `ERROR: Failed to execute addKey debug command for type ${type}`, error);
+            }
+        },
         
-    } catch (error) {
-        console.error('Failed to initialize game:', error);
-        document.getElementById('game-status').textContent = 'Game Status: Failed to load';
-    }
+        showState: () => {
+            try {
+                log('MAIN', 'DebugShowState', 'Debug command: showState executed');
+                console.log('Game State:', gameState);
+                log('MAIN', 'DebugShowState', 'Game state displayed in console');
+            } catch (error) {
+                log('MAIN', 'DebugShowState', 'ERROR: Failed to execute showState debug command', error);
+            }
+        },
+        
+        resetGame: () => {
+            try {
+                log('MAIN', 'DebugResetGame', 'Debug command: resetGame executed');
+                // Reset game state
+                gameState.players.clear();
+                gameState.doors.clear();
+                gameState.keys.clear();
+                gameState.currentPlayer = null;
+                gameState.battleInProgress = false;
+                gameState.gameStarted = false;
+                
+                // Restart the scene
+                if (game.scene.isActive('MainScene')) {
+                    game.scene.restart('MainScene');
+                }
+                
+                log('MAIN', 'DebugResetGame', 'Game reset successfully via debug command');
+            } catch (error) {
+                log('MAIN', 'DebugResetGame', 'ERROR: Failed to execute resetGame debug command', error);
+            }
+        }
+    };
+    
+    log('MAIN', 'GameInit', 'Debug commands set up successfully', { 
+        debugCommands: Object.keys(window.gameDebug)
+    });
+    
+    log('MAIN', 'GameInit', 'Game initialization completed successfully');
+    
+} catch (error) {
+    log('MAIN', 'GameInit', 'ERROR: Failed to initialize game', error);
+    console.error('Failed to initialize game:', error);
+}
+
+// Add error handling for unhandled errors
+window.addEventListener('error', (event) => {
+    log('MAIN', 'GlobalError', 'Unhandled error occurred', { 
+        message: event.message, 
+        filename: event.filename, 
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error
+    });
 });
 
-// Handle window resize
-window.addEventListener('resize', function() {
-    if (window.game) {
-        window.game.scale.refresh();
-    }
+window.addEventListener('unhandledrejection', (event) => {
+    log('MAIN', 'GlobalError', 'Unhandled promise rejection', { 
+        reason: event.reason,
+        promise: event.promise
+    });
 });
+
+log('MAIN', 'ScriptLoad', 'Main.js script loaded and executed successfully');

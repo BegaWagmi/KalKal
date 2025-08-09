@@ -1,84 +1,151 @@
 class Key {
     constructor(scene, x, y, type) {
-        this.scene = scene;
-        this.id = `key_${Date.now()}_${Math.random()}`;
-        this.type = type; // 'rock', 'paper', or 'scissors'
-        this.x = x;
-        this.y = y;
-        this.isActive = true;
-        this.isCollected = false;
+        log('KEY', 'Constructor', `Creating key ${type}`, { x, y, type });
         
-        // Create sprite with different colors for each type
-        const colors = {
-            'rock': 0x8b4513,    // Brown
-            'paper': 0xf5f5dc,   // Beige
-            'scissors': 0x4169e1  // Blue
-        };
-        
-        this.sprite = scene.add.rectangle(x, y, GAME_CONSTANTS.TILE_SIZE - 8, GAME_CONSTANTS.TILE_SIZE - 8, colors[type]);
-        this.sprite.setStrokeStyle(2, 0x000000);
-        
-        // Add physics
-        scene.physics.add.existing(this.sprite, true);
-        
-        // Add to scene
-        scene.add.existing(this.sprite);
-        
-        // Add text label
-        this.label = scene.add.text(x, y, type.charAt(0).toUpperCase(), {
-            fontSize: '16px',
-            fill: '#000000',
-            stroke: '#ffffff',
-            strokeThickness: 1
-        });
-        this.label.setOrigin(0.5);
-        
-        // Add to game state
-        gameState.keys.set(this.id, this);
-        
-        // Add floating animation
-        this.startFloatingAnimation();
+        try {
+            this.scene = scene;
+            this.id = `key_${Date.now()}_${Math.random()}`;
+            this.type = type;
+            this.x = x;
+            this.y = y;
+            this.isActive = true;
+            this.isCollected = false;
+            
+            // Set color based on type
+            const colors = { 'rock': 0x8b4513, 'paper': 0xf5f5dc, 'scissors': 0x4169e1 };
+            const color = colors[type];
+            
+            log('KEY', 'Constructor', `Key color set`, { type, color: color.toString(16) });
+            
+            // Create sprite
+            this.sprite = scene.add.rectangle(x, y, GAME_CONSTANTS.TILE_SIZE - 8, GAME_CONSTANTS.TILE_SIZE - 8, color);
+            this.sprite.setStrokeStyle(2, 0x000000);
+            
+            // Add physics
+            scene.physics.add.existing(this.sprite, true);
+            
+            // Add to scene
+            scene.add.existing(this.sprite);
+            
+            // Add to game state
+            gameState.keys.set(this.id, this);
+            
+            // Create label
+            this.label = scene.add.text(x, y, type.charAt(0).toUpperCase(), {
+                fontSize: '16px',
+                fill: '#000000',
+                fontStyle: 'bold'
+            });
+            this.label.setOrigin(0.5);
+            
+            log('KEY', 'Constructor', `Key ${this.id} created successfully`, { 
+                position: { x, y }, 
+                type, 
+                color: color.toString(16),
+                isActive: this.isActive,
+                isCollected: this.isCollected
+            });
+            
+            // Start floating animation
+            this.startFloatingAnimation();
+            
+        } catch (error) {
+            log('KEY', 'Constructor', `ERROR: Failed to create key ${type}`, error);
+            throw error;
+        }
     }
 
     startFloatingAnimation() {
-        this.scene.tweens.add({
-            targets: [this.sprite, this.label],
-            y: this.y - 5,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        try {
+            log('KEY', 'StartFloatingAnimation', `Starting floating animation for key ${this.id}`);
+            
+            this.scene.tweens.add({
+                targets: [this.sprite, this.label],
+                y: this.y - 5,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+            
+            log('KEY', 'StartFloatingAnimation', `Floating animation started for key ${this.id}`);
+            
+        } catch (error) {
+            log('KEY', 'StartFloatingAnimation', `ERROR: Failed to start floating animation for key ${this.id}`, error);
+        }
     }
 
     collect() {
-        if (this.isActive && !this.isCollected) {
-            this.isActive = false;
+        try {
+            if (this.isCollected) {
+                log('KEY', 'Collect', `Key ${this.id} already collected`);
+                return;
+            }
+            
+            log('KEY', 'Collect', `Collecting key ${this.id}`, { 
+                type: this.type, 
+                position: this.getPosition() 
+            });
+            
             this.isCollected = true;
+            this.isActive = false;
             
             // Hide sprite and label
             this.sprite.setVisible(false);
             this.label.setVisible(false);
             
-            // Remove from physics
-            this.sprite.body.enable = false;
+            // Stop physics
+            this.sprite.body.setEnable(false);
             
-            console.log(`Key ${this.type} collected!`);
+            // Remove from game state
+            gameState.keys.delete(this.id);
             
-            // Remove from game state after a delay
-            setTimeout(() => {
-                this.destroy();
-            }, 1000);
+            log('KEY', 'Collect', `Key ${this.id} collected successfully`, { 
+                type: this.type,
+                isCollected: this.isCollected,
+                isActive: this.isActive,
+                removedFromGameState: !gameState.keys.has(this.id)
+            });
+            
+        } catch (error) {
+            log('KEY', 'Collect', `ERROR: Failed to collect key ${this.id}`, error);
         }
     }
 
     getPosition() {
-        return { x: this.x, y: this.y };
+        try {
+            const position = { x: this.x, y: this.y };
+            return position;
+        } catch (error) {
+            log('KEY', 'GetPosition', `ERROR: Failed to get position for key ${this.id}`, error);
+            return { x: 0, y: 0 };
+        }
     }
 
     destroy() {
-        this.sprite.destroy();
-        this.label.destroy();
-        gameState.keys.delete(this.id);
+        try {
+            log('KEY', 'Destroy', `Destroying key ${this.id}`, { 
+                finalPosition: this.getPosition(), 
+                finalState: { isCollected: this.isCollected, isActive: this.isActive } 
+            });
+            
+            // Stop any active tweens
+            this.scene.tweens.killTweensOf([this.sprite, this.label]);
+            
+            // Destroy sprites
+            this.sprite.destroy();
+            this.label.destroy();
+            
+            // Remove from game state if still there
+            if (gameState.keys.has(this.id)) {
+                gameState.keys.delete(this.id);
+                log('KEY', 'Destroy', `Key ${this.id} removed from game state`);
+            }
+            
+            log('KEY', 'Destroy', `Key ${this.id} destroyed successfully`);
+            
+        } catch (error) {
+            log('KEY', 'Destroy', `ERROR: Failed to destroy key ${this.id}`, error);
+        }
     }
 }
